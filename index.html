@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0b0f10" />
+  <title>Zombie Slots: Graveyard Defense</title>
+  <link rel="icon" type="image/png" href="assets/icon.png" />
+  <link rel="apple-touch-icon" href="assets/icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- ===================== START / MENU SCREEN ===================== -->
+    <section id="menu-screen" class="screen active">
+      <div class="menu-bg"></div>
+      <div class="menu-content">
+        <img class="menu-icon" src="assets/icon.png" alt="Zombie Slots icon" />
+        <h1 class="game-title">
+          <span class="title-zombie">ZOMBIE</span>
+          <span class="title-slots">SLOTS</span>
+          <span class="title-sub">Graveyard Defense</span>
+        </h1>
+        <div class="menu-stats">
+          <div class="menu-stat"><span class="ms-label">Best Wave</span><span class="ms-value" id="menu-best-wave">0</span></div>
+          <div class="menu-stat"><span class="ms-label">Soul Bank</span><span class="ms-value" id="menu-bank">0</span></div>
+        </div>
+        <button id="btn-play" class="btn btn-primary btn-huge">PLAY</button>
+        <button id="btn-research" class="btn btn-secondary">RESEARCH TREE</button>
+        <p class="menu-hint">Defend the graveyard gate. Spin to survive.</p>
+      </div>
+    </section>
+
+    <!-- ===================== RESEARCH (META) SCREEN ===================== -->
+    <section id="research-screen" class="screen">
+      <header class="panel-header">
+        <button id="btn-research-back" class="btn btn-icon">&larr;</button>
+        <h2>Research Tree</h2>
+        <div class="bank-chip">🪙 <span id="research-bank">0</span></div>
+      </header>
+      <p class="panel-sub">Permanent upgrades, paid with banked souls. They persist across every run.</p>
+      <div id="research-list" class="research-list"></div>
+    </section>
+
+    <!-- ===================== GAME SCREEN ===================== -->
+    <section id="game-screen" class="screen">
+      <!-- Top HUD -->
+      <div class="hud">
+        <div class="hud-item hud-wave">
+          <span class="hud-label">WAVE</span>
+          <span class="hud-value" id="hud-wave">1</span>
+        </div>
+        <div class="hud-item hud-coins">
+          <span class="hud-icon">🪙</span>
+          <span class="hud-value" id="hud-coins">0</span>
+        </div>
+        <div class="hud-item hud-spins">
+          <span class="hud-icon">🔄</span>
+          <span class="hud-value" id="hud-spins">0</span>
+        </div>
+      </div>
+
+      <!-- Battlefield -->
+      <div id="battlefield" class="battlefield">
+        <div class="bf-moon"></div>
+        <div class="bf-fog"></div>
+        <div id="boss-bar" class="boss-bar hidden">
+          <div class="bb-name"><span id="boss-name"></span></div>
+          <div class="bb-bar"><div id="boss-hp-fill" class="bb-fill"></div></div>
+          <div class="bb-hp"><span id="boss-hp">0</span> / <span id="boss-hp-max">0</span></div>
+        </div>
+        <div id="zombie-layer" class="zombie-layer"></div>
+        <div id="fx-layer" class="fx-layer"></div>
+        <div id="gate" class="gate">
+          <div class="gate-graphic">
+            <div class="gate-wall"></div>
+            <div class="gate-door"></div>
+          </div>
+          <div class="gate-hp-wrap">
+            <div class="gate-hp-bar"><div id="gate-hp-fill" class="gate-hp-fill"></div></div>
+            <div class="gate-hp-text"><span id="gate-hp">100</span>/<span id="gate-hp-max">100</span> ❤️ <span id="gate-armor-chip" class="armor-chip hidden">🛡️<span id="gate-armor">0</span></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Combat log / banner -->
+      <div id="banner" class="banner"></div>
+
+      <!-- Slot machine -->
+      <div class="slot-machine">
+        <div id="reels" class="reels"></div>
+        <div class="slot-controls">
+          <button id="btn-spin" class="btn btn-spin">SPIN</button>
+          <button id="btn-wait" class="btn btn-wait hidden">BRACE!</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== WAVE COMPLETE / SHOP OVERLAY ===================== -->
+    <div id="shop-overlay" class="overlay">
+      <div class="overlay-card">
+        <h2 class="overlay-title">WAVE <span id="shop-wave">1</span> CLEARED</h2>
+        <div class="overlay-rewards" id="shop-rewards"></div>
+        <h3 class="shop-heading">Upgrade your slot machine</h3>
+        <div id="shop-list" class="shop-list"></div>
+        <div class="shop-footer">
+          <div class="bank-chip">🪙 <span id="shop-coins">0</span></div>
+          <button id="btn-next-wave" class="btn btn-primary">NEXT WAVE &rarr;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== GAME OVER OVERLAY ===================== -->
+    <div id="gameover-overlay" class="overlay">
+      <div class="overlay-card gameover-card">
+        <h2 class="overlay-title gameover-title">THE GATE HAS FALLEN</h2>
+        <div class="gameover-stats">
+          <div class="go-stat"><span class="go-label">Waves Survived</span><span class="go-value" id="go-wave">0</span></div>
+          <div class="go-stat"><span class="go-label">Coins Earned</span><span class="go-value" id="go-coins">0</span></div>
+          <div class="go-stat"><span class="go-label">Souls Banked</span><span class="go-value" id="go-bank">0</span></div>
+          <div class="go-stat" id="go-best-wrap"><span class="go-label">New Best!</span><span class="go-value" id="go-best">0</span></div>
+        </div>
+        <button id="btn-restart" class="btn btn-primary btn-huge">PLAY AGAIN</button>
+        <button id="btn-menu" class="btn btn-secondary">MAIN MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
