@@ -32,12 +32,17 @@ device emulation).
 
 ## How to play
 
-1. Press **PLAY**. Zombies begin marching toward your gate.
-2. Tap **SPIN**. Each reel lands on a symbol; symbols and combos resolve immediately.
-3. After every spin the zombies advance. If they reach the gate, they attack it.
-4. Clear all zombies to finish the wave, collect a bonus, and buy upgrades.
-5. A **boss** appears every 5th wave. Survive as long as you can — the gate falling
-   at 0 HP ends the run. After Wave 20 you enter scaling **Endless** mode.
+1. Press **PLAY**. Zombies march toward your gate **in real time** — they keep
+   advancing whether or not you act.
+2. Tap **SPIN** to attack; each reel lands on a symbol and combos resolve instantly.
+   Spins recharge over time up to a cap, so you can always keep fighting.
+3. Toggle **AUTO** (left of SPIN) to spin continuously hands-free.
+4. When zombies reach the gate they stop and attack it on a cooldown, draining your
+   armor and then HP. Kill them before they overwhelm you.
+5. Clear all zombies to finish the wave, collect a bonus, and buy upgrades.
+6. Zombie **attack power and speed creep up slowly each wave**. A **boss** appears
+   every 5th wave. The gate falling to 0 HP ends the run. After Wave 20 you enter
+   scaling **Endless** mode.
 
 ### Slot symbols
 

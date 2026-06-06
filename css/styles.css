@@ -282,9 +282,18 @@ body {
 @keyframes reelbuzz { 0%{transform:translateY(-26px); opacity:0.4;} 50%{opacity:1;} 100%{transform:translateY(26px); opacity:0.4;} }
 .reel.landed { animation: land 0.25s ease; }
 @keyframes land { 0%{transform:scale(1.08)} 100%{transform:scale(1)} }
-.slot-controls { display: flex; }
+.slot-controls { display: flex; gap: 10px; align-items: stretch; }
+.btn-auto {
+  flex: 0 0 84px; border-radius: 14px; font-size: 14px; line-height: 1.05;
+  background: linear-gradient(180deg, #3a4a55, #233038); color: var(--ink);
+  box-shadow: 0 5px 0 #11181d; padding: 10px 6px;
+}
+.btn-auto .auto-state { font-size: 13px; font-weight: 900; color: #ff8a8a; }
+.btn-auto.on { background: linear-gradient(180deg, #a6f15e, #5fa832); color: #07120a; box-shadow: 0 5px 0 #2f6a1a; }
+.btn-auto.on .auto-state { color: #07120a; }
+.btn-auto:active { box-shadow: 0 2px 0 #11181d; }
 .btn-spin {
-  width: 100%; font-size: 26px; padding: 16px; border-radius: 14px;
+  flex: 1; font-size: 26px; padding: 16px; border-radius: 14px;
   background: linear-gradient(180deg, #ff5c6c, #b21f2e); color: #fff;
   box-shadow: 0 5px 0 #7a1320; letter-spacing: 0.1em;
 }

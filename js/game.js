@@ -251,7 +251,7 @@
 
   /* ---------------------- REAL-TIME GAME LOOP ---------------------- */
   // Zombies move toward the gate continuously (independent of player spins).
-  const MOVE_SCALE = 0.5;       // multiplies a zombie's `speed` -> battlefield units/sec
+  const MOVE_SCALE = 0.42;      // multiplies a zombie's `speed` -> battlefield units/sec
   const SPIN_REGEN_SEC = 1.8;   // a spin recharges this often, up to the cap
   const POISON_TICK_SEC = 1.0;  // gate poison applies once per second
   let rafId = null;
@@ -259,6 +259,7 @@
   let lastT = 0;
   let regenTimer = 0;
   let poisonTimer = 0;
+  let autoSpin = false;
 
   function spinCap() { return run.startingSpins + run.up.spins; }
 
@@ -342,6 +343,9 @@
     renderZombies();
     updateHud();
 
+    // Auto-spin keeps firing whenever spins are available (real-time friendly).
+    if (autoSpin && !busy && run.spins > 0) doSpin();
+
     if (run.gateHp <= 0) { gameOver(); return; }
     if (aliveZombies().length === 0) { waveCleared(); return; }
   }
@@ -378,7 +382,7 @@
       hp: Math.round(def.hp * hpScale),
       dmg: Math.max(1, Math.round(def.dmg * dmgScale)),
       speed: def.speed * speedScale,
-      attackInterval: 1.0,
+      attackInterval: 1.2,
       attackTimer: 0,
       summonTimer: 0,
       reward: def.reward,
@@ -406,7 +410,7 @@
       hp: boss.hp,
       dmg: boss.dmg,
       speed: boss.speed * speedScale,
-      attackInterval: 1.2,
+      attackInterval: 1.4,
       attackTimer: 0,
       summonTimer: 0,
       reward: boss.reward,
@@ -503,6 +507,19 @@
     spinBtn.disabled = run.spins <= 0;
   }
 
+  function toggleAuto() {
+    autoSpin = !autoSpin;
+    updateAutoBtn();
+    if (autoSpin && running && !busy && run && run.spins > 0) doSpin();
+  }
+  function updateAutoBtn() {
+    const b = $('#btn-auto');
+    const s = $('#auto-state');
+    if (!b) return;
+    b.classList.toggle('on', autoSpin);
+    if (s) s.textContent = autoSpin ? 'ON' : 'OFF';
+  }
+
   /* ---------------------- REELS UI ---------------------- */
   function buildReelEls() {
     const wrap = $('#reels');
@@ -532,7 +549,8 @@
       const reel = reels[i];
       const sym = reel.querySelector('.reel-symbol');
       reel.classList.add('spinning');
-      const ticks = 16 + i * 7;
+      // Kept short so the player can act often in real-time combat.
+      const ticks = 8 + i * 3;
       let t = 0;
       const iv = setInterval(() => {
         const r = SYMBOL_ORDER[rand(SYMBOL_ORDER.length)];
@@ -545,11 +563,11 @@
           sym.style.color = SYMBOLS[finalSym].color;
           reel.classList.remove('spinning');
           reel.classList.add('landed');
-          setTimeout(() => reel.classList.remove('landed'), 250);
+          setTimeout(() => reel.classList.remove('landed'), 200);
           finished++;
-          if (finished === finals.length) setTimeout(done, 180);
+          if (finished === finals.length) setTimeout(done, 90);
         }
-      }, 55);
+      }, 45);
     });
   }
 
@@ -839,6 +857,8 @@
   /* ---------------------- WIRING ---------------------- */
   function startGame() {
     newRun();
+    autoSpin = false;
+    updateAutoBtn();
     buildReelEls();
     zEls.clear();
     $('#zombie-layer').innerHTML = '';
@@ -862,6 +882,7 @@
     $('#btn-research-back').addEventListener('click', () => { refreshMenu(); showScreen('menu-screen'); });
 
     $('#btn-spin').addEventListener('click', doSpin);
+    $('#btn-auto').addEventListener('click', toggleAuto);
     $('#btn-next-wave').addEventListener('click', nextWave);
 
   }
