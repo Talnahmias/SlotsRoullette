@@ -178,10 +178,12 @@ body {
 /* ---------------- Zombies ---------------- */
 .zombie {
   position: absolute; transform: translate(-50%, -50%);
-  transition: top 0.4s ease, left 0.4s ease;
+  transition: none; /* movement is driven every frame by the game loop */
   display: flex; flex-direction: column; align-items: center; gap: 3px; z-index: 3;
 }
 .z-body { font-size: 30px; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.5)); animation: shamble 0.9s ease-in-out infinite; }
+.zombie.attacking .z-body { animation: lunge 0.45s ease-in-out infinite; }
+@keyframes lunge { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(7px) scale(1.06); } }
 .zombie.boss .z-body { font-size: 58px; filter: drop-shadow(0 0 12px rgba(255,60,80,0.6)) drop-shadow(0 3px 2px rgba(0,0,0,0.6)); }
 .zombie.stunned .z-body { animation: none; filter: drop-shadow(0 0 6px var(--blue)) grayscale(0.4); }
 .z-hp { width: 34px; height: 5px; background: #2a1216; border-radius: 3px; overflow: hidden; border: 1px solid #401a20; }

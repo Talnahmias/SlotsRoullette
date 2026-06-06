@@ -220,7 +220,7 @@
           break;
         }
         case 'stunAll':
-          onFieldZombies().forEach((z) => (z.stunned = 1));
+          onFieldZombies().forEach((z) => (z.stunUntil = 1.5));
           break;
         case 'heal':
           healGate((a.amount || 0) * (run.up.heart || 1));
@@ -249,38 +249,101 @@
     return swing;
   }
 
-  /* ---------------------- ZOMBIE TURN ---------------------- */
-  function zombiesAdvance() {
-    // Poison from bosses ticks first.
-    if (run.poison > 0) {
-      damageGate(6, true);
-      run.poison--;
+  /* ---------------------- REAL-TIME GAME LOOP ---------------------- */
+  // Zombies move toward the gate continuously (independent of player spins).
+  const MOVE_SCALE = 0.5;       // multiplies a zombie's `speed` -> battlefield units/sec
+  const SPIN_REGEN_SEC = 1.8;   // a spin recharges this often, up to the cap
+  const POISON_TICK_SEC = 1.0;  // gate poison applies once per second
+  let rafId = null;
+  let running = false;
+  let lastT = 0;
+  let regenTimer = 0;
+  let poisonTimer = 0;
+
+  function spinCap() { return run.startingSpins + run.up.spins; }
+
+  function startLoop() {
+    if (running) return;
+    running = true;
+    lastT = performance.now();
+    rafId = requestAnimationFrame(loop);
+  }
+  function stopLoop() {
+    running = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+  function loop(now) {
+    if (!running) return;
+    let dt = (now - lastT) / 1000;
+    lastT = now;
+    if (dt > 0.1) dt = 0.1; // clamp big gaps (tab switches / hitches)
+    tick(dt);
+    if (running) rafId = requestAnimationFrame(loop);
+  }
+
+  function tick(dt) {
+    // Spins slowly recharge so the player can always act.
+    regenTimer += dt;
+    if (regenTimer >= SPIN_REGEN_SEC) {
+      regenTimer -= SPIN_REGEN_SEC;
+      if (run.spins < spinCap()) run.spins++;
     }
 
+    // Gate poison (Toxic Giant) ticks over time.
+    if (run.poison > 0) {
+      poisonTimer += dt;
+      while (poisonTimer >= POISON_TICK_SEC && run.poison > 0) {
+        poisonTimer -= POISON_TICK_SEC;
+        damageGate(6, true);
+        run.poison--;
+      }
+    }
+
+    // Move every zombie toward the gate; attack once it arrives.
     for (const z of run.zombies) {
       if (!z.alive) continue;
-      if (z.stunned) { z.stunned = 0; continue; }
 
-      // Necromancer / summoner bosses occasionally raise a walker.
-      if ((z.summons) && z.dist <= 100 && Math.random() < 0.35 && aliveZombies().length < 30) {
-        spawnZombie('walker', 100 + rand(10), true);
+      // Summoners raise walkers on a timer.
+      if (z.summons) {
+        z.summonTimer = (z.summonTimer || 0) + dt;
+        if (z.summonTimer >= 4 && z.dist <= 100 && aliveZombies().length < 30) {
+          z.summonTimer = 0;
+          spawnZombie('walker', 100 + rand(10), true);
+        }
       }
 
-      z.dist -= z.speed;
-      if (z.dist <= 0) {
-        z.dist = 0;
-        // Reached the gate.
-        if (z.explodes) {
-          floatGate('💥', 'dmg');
-          damageGate(z.dmg);
-          z.alive = false;
-          spawnPoof(z);
-        } else {
+      if (z.dist > 0) {
+        if (z.stunUntil > 0) { z.stunUntil -= dt; continue; } // briefly frozen
+        z.dist -= z.speed * MOVE_SCALE * dt;
+        if (z.dist <= 0) {
+          z.dist = 0;
+          z.atGate = true;
+          if (z.explodes) {
+            floatGate('💥', 'dmg');
+            damageGate(z.dmg);
+            z.alive = false;
+            spawnPoof(z);
+          } else {
+            z.attackTimer = z.attackInterval; // first hit lands on contact
+          }
+        }
+      } else {
+        // At the gate: attack on cooldown, chipping armor then HP.
+        z.attackTimer = (z.attackTimer || 0) + dt;
+        if (z.attackTimer >= z.attackInterval) {
+          z.attackTimer = 0;
           damageGate(z.dmg);
           if (z.poison) run.poison += z.poison;
         }
       }
     }
+
+    renderZombies();
+    updateHud();
+
+    if (run.gateHp <= 0) { gameOver(); return; }
+    if (aliveZombies().length === 0) { waveCleared(); return; }
   }
 
   function damageGate(dmg, ignoreArmor) {
@@ -303,6 +366,9 @@
     const def = ZOMBIE_TYPES[type];
     const cycle = Math.floor((run.wave - 1) / 5);
     const hpScale = 1 + cycle * 0.35;
+    // Attack power and movement speed creep up slowly with each wave.
+    const dmgScale = 1 + (run.wave - 1) * 0.06;
+    const speedScale = 1 + (run.wave - 1) * 0.03;
     run.zombies.push({
       uid: ++zid,
       type: def.id,
@@ -310,21 +376,27 @@
       name: def.name,
       maxHp: Math.round(def.hp * hpScale),
       hp: Math.round(def.hp * hpScale),
-      dmg: Math.round(def.dmg * (1 + cycle * 0.15)),
-      speed: def.speed,
+      dmg: Math.max(1, Math.round(def.dmg * dmgScale)),
+      speed: def.speed * speedScale,
+      attackInterval: 1.0,
+      attackTimer: 0,
+      summonTimer: 0,
       reward: def.reward,
       explodes: !!def.explodes,
       summons: !!def.summons,
       dist: dist,
       lane: rand(3),
       alive: true,
-      stunned: 0,
+      stunUntil: 0,
+      atGate: false,
       isBoss: false,
       summoned: !!summoned,
     });
   }
 
   function spawnBoss(boss) {
+    // Boss HP/damage already scale in buildWave; nudge speed up slightly by wave.
+    const speedScale = 1 + (run.wave - 1) * 0.02;
     run.zombies.push({
       uid: ++zid,
       type: boss.id,
@@ -333,7 +405,10 @@
       maxHp: boss.hp,
       hp: boss.hp,
       dmg: boss.dmg,
-      speed: boss.speed,
+      speed: boss.speed * speedScale,
+      attackInterval: 1.2,
+      attackTimer: 0,
+      summonTimer: 0,
       reward: boss.reward,
       explodes: false,
       summons: !!boss.summons,
@@ -341,7 +416,8 @@
       dist: 100,
       lane: 1,
       alive: true,
-      stunned: 0,
+      stunUntil: 0,
+      atGate: false,
       isBoss: true,
       ability: boss.ability,
     });
@@ -354,8 +430,10 @@
     zid = 0;
     run.armor = run.armor; // armor persists between waves
     run.poison = 0;
-    // Spins: refill to starting amount + leftover banked spins.
-    run.spins = run.startingSpins + run.up.spins + run.spins;
+    // Spins refill to the cap at the start of each wave (and recharge over time).
+    run.spins = spinCap();
+    regenTimer = 0;
+    poisonTimer = 0;
 
     const def = buildWave(n);
     if (def.isBoss) {
@@ -383,15 +461,11 @@
     renderReels(run.lastSymbols, false);
     updateSpinButtons();
     showScreen('game-screen');
-  }
-
-  function checkWaveState() {
-    if (run.gateHp <= 0) { gameOver(); return; }
-    if (aliveZombies().length === 0) { waveCleared(); return; }
-    updateSpinButtons();
+    startLoop();
   }
 
   function waveCleared() {
+    stopLoop();
     busy = true;
     // Wave clear bonus coins.
     const bonus = 20 + run.wave * 8;
@@ -416,40 +490,17 @@
       applyActions(actions);
       renderZombies();
       updateHud();
-
-      // brief pause then zombies move
-      setTimeout(() => {
-        zombiesAdvance();
-        renderZombies();
-        updateHud();
-        busy = false;
-        checkWaveState();
-      }, 420);
+      busy = false;
+      // Wave-clear / game-over are detected by the real-time loop.
     });
-  }
-
-  function doBrace() {
-    if (busy || !run || run.spins > 0) return;
-    busy = true;
-    showBanner('You brace the gate… (+2 spins)', 'info');
-    run.spins += 2;
-    zombiesAdvance();
-    renderZombies();
-    updateHud();
-    setTimeout(() => { busy = false; checkWaveState(); }, 300);
   }
 
   function updateSpinButtons() {
     const spinBtn = $('#btn-spin');
     const waitBtn = $('#btn-wait');
-    if (run.spins > 0) {
-      spinBtn.classList.remove('hidden');
-      spinBtn.disabled = false;
-      waitBtn.classList.add('hidden');
-    } else {
-      spinBtn.classList.add('hidden');
-      waitBtn.classList.remove('hidden');
-    }
+    if (waitBtn) waitBtn.classList.add('hidden'); // brace mechanic retired in real-time mode
+    spinBtn.classList.remove('hidden');
+    spinBtn.disabled = run.spins <= 0;
   }
 
   /* ---------------------- REELS UI ---------------------- */
@@ -520,6 +571,7 @@
     } else {
       armorChip.classList.add('hidden');
     }
+    updateSpinButtons();
   }
 
   /* ---------------------- BATTLEFIELD RENDER ---------------------- */
@@ -543,7 +595,8 @@
       const laneX = [22, 50, 78][z.lane];
       node.style.top = top + '%';
       node.style.left = laneX + '%';
-      node.classList.toggle('stunned', !!z.stunned);
+      node.classList.toggle('stunned', (z.stunUntil || 0) > 0);
+      node.classList.toggle('attacking', !!z.atGate);
       const hpFill = node.querySelector('.z-hp-fill');
       hpFill.style.width = clamp((z.hp / z.maxHp) * 100, 0, 100) + '%';
     }
@@ -730,6 +783,7 @@
 
   /* ---------------------- GAME OVER ---------------------- */
   function gameOver() {
+    stopLoop();
     busy = true;
     const wavesSurvived = Math.max(0, run.wave - 1) + (aliveZombies().length === 0 ? 1 : 0);
     const survived = run.wave; // reached this wave
@@ -808,7 +862,6 @@
     $('#btn-research-back').addEventListener('click', () => { refreshMenu(); showScreen('menu-screen'); });
 
     $('#btn-spin').addEventListener('click', doSpin);
-    $('#btn-wait').addEventListener('click', doBrace);
     $('#btn-next-wave').addEventListener('click', nextWave);
 
   }
