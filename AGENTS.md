@@ -4,15 +4,42 @@ Guidance for AI agents working in this repository.
 
 ## Project status
 
-**SlotsRoullette** is currently a greenfield repository: it contains only `README.md` (title line). There is no application source, dependency manifests, Docker setup, CI, or test/lint configuration yet.
+**Zombie Slots: Graveyard Defense** is a self-contained browser game built with
+vanilla HTML / CSS / JavaScript. There is **no build step and no dependencies**.
 
-When application code is added, update this file with concrete run/test/lint commands and service startup notes.
+Key files:
+
+- `index.html` — markup (menu, game screen, shop/game-over overlays)
+- `css/styles.css` — theme, portrait layout, animations
+- `js/data.js` — static game data (symbols, combos, zombies, bosses, waves, upgrades, research)
+- `js/game.js` — game engine (state, spins, combat, waves, shop, meta progression, rendering)
+- `assets/icon.png` — generated app icon
 
 ## Cursor Cloud specific instructions
 
 ### Services
 
-No application services are defined. Nothing needs to run for local development until code and infrastructure are added (for example `package.json`, `docker-compose.yml`, or similar).
+The game is static files. Serve the repo root and open `index.html`:
+
+```bash
+python3 -m http.server 8080   # then open http://localhost:8080/index.html
+```
+
+There is no backend, database, or other service to run.
+
+### Lint / test / build / run
+
+- **Build:** none required (static files).
+- **Syntax check:** `node --check js/data.js && node --check js/game.js`
+- **Run/test:** serve with `python3 -m http.server 8080` and exercise the game in a
+  browser. The whole UI is portrait-first; on desktop widths it renders as a centered
+  device frame so the entire panel (incl. the top HUD) is visible.
+
+### Testing notes
+
+- Persistent meta progression is stored in `localStorage` under `zombieSlots.meta.v1`.
+- There is no built-in debug API in committed code; to fast-forward during manual
+  testing you can temporarily expose helpers, but do not commit them.
 
 ### VM toolchain (available for future development)
 
